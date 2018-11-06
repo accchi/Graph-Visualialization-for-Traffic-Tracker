@@ -1,0 +1,13 @@
+
+public class AlreadyExist extends Exception {
+
+	private String message;
+	
+	public AlreadyExist(String m) {
+		message=m;
+	}
+	
+	public String toString() {
+		return message;
+	}
+}

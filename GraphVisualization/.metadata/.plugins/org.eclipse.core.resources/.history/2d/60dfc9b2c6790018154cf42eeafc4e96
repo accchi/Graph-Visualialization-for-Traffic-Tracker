@@ -1,0 +1,42 @@
+package undoredo;
+
+import java.util.Map;
+
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import visualize.Edge;
+
+public class NodeRedelete extends AbstractUndoableEdit {
+	
+	private Map<String,Edge> edges;
+	private String id;
+	private int degree;
+	private Color color;
+	private double size;
+	private String label;
+	private Graph graph;
+	
+	
+	public NodeRedelete(Graph g,String idd,int dgr,Color col,double siz,String lab) {
+		
+		
+	}
+	
+	@Override
+	public void redo() throws CannotRedoException {
+		
+		
+	}
+	
+	
+	@Override
+	public void undo() throws CannotUndoException {
+	
+		
+	}
+
+}

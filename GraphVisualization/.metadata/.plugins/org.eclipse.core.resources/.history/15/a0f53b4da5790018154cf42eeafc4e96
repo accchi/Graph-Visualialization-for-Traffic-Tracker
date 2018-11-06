@@ -1,0 +1,20 @@
+package undoredo;
+
+
+import visualize.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+
+
+public class NodeReadd {
+	
+	private String id,label;
+	
+	NodeReadd(String idd)
+
+}

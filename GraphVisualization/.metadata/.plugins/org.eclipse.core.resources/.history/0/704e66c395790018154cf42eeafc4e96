@@ -1,0 +1,33 @@
+package undoredo;
+
+import java.util.ArrayList;
+
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+
+public class NodeResize extends AbstractUndoableEdit {
+
+	private double oldSize,newSize;
+	private ArrayList<String> nodes;
+	
+	public NodeResize(double oldS,double newS,ArrayList<String> n) {
+		
+		oldSize=oldS; newSize=newS; nodes=n;
+		
+	}
+	
+	@Override
+	public void redo() throws CannotRedoException {
+		
+		try {
+			
+			
+		}catch(CannontRedoException e) {
+			
+		}
+		
+	}
+	
+	
+	
+}

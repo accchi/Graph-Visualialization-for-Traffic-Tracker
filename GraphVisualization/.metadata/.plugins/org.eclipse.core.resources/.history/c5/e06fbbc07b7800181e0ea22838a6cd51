@@ -1,0 +1,26 @@
+
+public class ExpCont extends Thread {
+
+	boolean exp; // true-> expansion / false-> contraction
+	
+	public ExpCont() {
+		start();
+	}
+	
+	public void run() {
+		
+		try {
+			
+			while(true) {
+				
+				synchronized(this) {
+					
+				wait();
+				
+				}
+			}
+		}catch(Exception e) {
+			
+		}
+	}
+}

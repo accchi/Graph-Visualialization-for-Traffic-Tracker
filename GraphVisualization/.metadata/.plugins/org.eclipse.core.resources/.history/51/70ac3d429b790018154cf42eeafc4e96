@@ -1,0 +1,49 @@
+package undoredo;
+import visualize.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+
+public class NodeResize extends AbstractUndoableEdit {
+
+	private Graph g;
+	private double newSize;
+	private ArrayList<String> nodes;
+	private HashMap<String,Double> oldSize;
+	
+	public NodeResize(Graph gg,HashMap<String,Double> oldS,double newS,ArrayList<String> n) {
+		
+		
+		oldSize=oldS; newSize=newS; g=gg;
+		
+	}
+	
+	@Override
+	public void redo() throws CannotRedoException {
+		
+		for(String id : nodes) {
+			
+			g.getNode(id).setSize(newSize);
+		
+		}
+		
+		
+	}
+	
+	@Override
+	public void undo() throws CannotUndoException {
+		
+		for(String id : nodes) {
+			
+			g.getNode(id).setSize(oldSize);
+		
+		}
+		
+	}
+	
+	
+	
+}

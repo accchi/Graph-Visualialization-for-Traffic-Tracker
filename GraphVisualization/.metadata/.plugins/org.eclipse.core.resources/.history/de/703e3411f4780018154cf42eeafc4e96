@@ -1,0 +1,125 @@
+
+import java.io.*;
+import java.util.regex.*;
+
+public class GML extends Format {
+
+	@Override
+	public Graph load(Graph g, File f) {
+
+		File file = f; // new File(fname);
+
+		try {
+
+			BufferedReader buff = new BufferedReader(new FileReader(file));
+			buff.readLine();
+			buff.readLine();
+
+			String line;
+
+			while ((line = buff.readLine()) != null) {
+
+				Pattern pat1 = Pattern.compile("(.*)");
+				Matcher mat1 = pat1.matcher(line);
+
+				if (mat1.find()) {
+
+					if (mat1.group(1).contentEquals("node")) { // if matched node
+
+						buff.readLine();
+						line = buff.readLine();
+
+						Pattern pat2 = Pattern.compile("^ *id (.*)");
+						Matcher mat2 = pat2.matcher(line);
+
+						if (mat2.find()) {
+
+							try {
+								
+								g.addNode(mat2.group(1));
+								
+							}catch(ExistException e) {
+								
+							}
+
+							line = buff.readLine();
+							Pattern pat3 = Pattern.compile("^ *label (.*)");
+							Matcher mat3 = pat3.matcher(line);
+
+							if (mat3.find()) {
+
+								g.getAllNodes().get(mat2.group(1)).setLabel(mat3.group(1));
+
+							} else
+
+								continue;
+						}
+
+					} else { // if matched edge
+						if (mat1.group(1).contains("edge")) {
+							
+							buff.readLine();
+							line = buff.readLine();
+
+							Pattern pat4 = Pattern.compile("^ *source (.*)");
+							Matcher mat4 = pat4.matcher(line);
+							String id1 = "", id2 = "";
+
+							if (mat4.find()) {
+
+								id1 = mat4.group(1);
+
+							}
+
+							line = buff.readLine();
+
+							pat4 = Pattern.compile("^ *target (.*)");
+							mat4 = pat4.matcher(line);
+
+							if (mat4.find()) {
+
+								id2 = mat4.group(1);
+
+							}
+
+							line = buff.readLine();
+
+							pat4 = Pattern.compile("^ *label (.*)");
+							mat4 = pat4.matcher(line);
+
+							if (mat4.find()) {
+								
+								try {
+									
+									g.addEdge(id1, id2, mat4.group(1));
+									
+								}catch(ExistException e) {
+									
+								}
+
+							} else {
+								
+								try {
+									
+									g.addEdge(id1, id2, "");
+									
+								}catch(ExistException e) {
+									
+								}
+								
+								continue;
+							}
+
+						} else
+							break;
+					}
+				}
+			}
+		} catch (Exception e) {
+			
+		}
+
+		return g;
+	}
+	
+}

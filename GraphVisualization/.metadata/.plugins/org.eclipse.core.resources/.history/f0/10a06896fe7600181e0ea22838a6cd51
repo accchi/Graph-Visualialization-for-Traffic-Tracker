@@ -1,0 +1,13 @@
+
+import java.io.*;
+import java.util.regex.*;
+
+public class GML extends Format {
+
+	@Override
+	public Graph load(String name) {
+		
+
+	}
+	
+}

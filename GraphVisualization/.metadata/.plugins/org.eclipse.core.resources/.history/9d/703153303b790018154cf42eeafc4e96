@@ -1,0 +1,95 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.io.*;
+import java.util.regex.*;
+
+import javafx.scene.paint.Color;
+
+public class TXT extends Format {
+
+	@Override
+	public Graph load(Graph g, File f) {
+
+		File file = f; // new File(fname);
+
+		BufferedReader buff = new BufferedReader(new FileReader(file));
+		String line;
+
+		while ((line = buff.readLine()) != null) {
+
+			String[] words = line.split(" ");
+
+			if (words[0].equals("node")) { // to be sure that this line is for node
+				
+				String id = words[1];
+				double x = Double.parseDouble(words[2]);
+				double y = Double.parseDouble(words[3]);
+				int degree = Integer.parseInt(words[4]);
+				int size = Integer.parseInt(words[5]);
+				String label = words[6];
+				double red = Double.parseDouble(words[7]);
+				double green = Double.parseDouble(words[8]);
+				double blue = Double.parseDouble(words[9]);
+
+				try {
+					
+					g.addNode(id);
+					g.getNode(id).setX(x);
+					g.getNode(id).setY(y);
+					g.getNode(id).setSize(size);
+					g.getNode(id).setLabel(label);
+					g.getNode(id).setColor(Color.color(red, green, blue));
+					
+				}catch(ExistException e) {
+					
+				}
+
+				// System.out.println(words.length+" "+words[0]);
+
+			}
+		}
+		return g;
+	}
+	
+	public void save(Graph g) {
+		
+		try {
+			File fout = new File("out.txt");
+			FileOutputStream fos = new FileOutputStream(fout);
+			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+			
+			for(Node n: g.getAllNodes().values()) {
+				
+				String lab;
+				
+				if(n.getLabel().getText().equals("")) {
+					
+					lab="null"; // if it doesnt have label
+					
+				}else {
+					lab=n.getLabel().getText();
+				}
+				
+				bw.write("node "+n.getIDDD()+" "+n.getX()+" "+n.getY()+" "+n.getDegree()+" "+n.getSize()+" "+lab+" "+n.getColor().getRed()+" "+n.getColor().getGreen()+" "+n.getColor().getBlue());
+				bw.newLine();
+			}
+			bw.close();
+		}catch(Exception e) {
+		}
+		
+		
+	}
+	
+	static public void main(String[] args) {
+
+	}
+
+}

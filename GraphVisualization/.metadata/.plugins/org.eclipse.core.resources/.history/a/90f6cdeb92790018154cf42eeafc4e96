@@ -1,0 +1,7 @@
+package undoredo;
+
+import javax.swing.undo.AbstractUndoableEdit;
+
+public class NodeResize extends AbstractUndoableEdit {
+
+}

@@ -1,0 +1,354 @@
+import java.util.*;
+
+import javafx.scene.layout.Pane;
+
+public class Graph {
+	
+	private Map<String, Node> nodes;
+	private Map<Pair<String,String>,Edge> edges;
+	private Pane nd,ed,ndLab,edLab; //Panes for nodes and edges and their labels
+	private int numOfNodes,numOfEdges;
+	
+	public Graph() { // constructor for Graph
+		
+		nodes= new HashMap<String, Node>();
+		edges= new HashMap<Pair<String,String>,Edge>();
+		
+	}
+	
+	public Map<Pair<String,String>,Edge> getAllEdges(){ // getter for map of edges
+		
+		return edges;
+		
+	}
+	
+	public Map<String,Node> getAllNodes(){ // getter for map of nodes
+		
+		return nodes;
+		
+	}
+	
+	public void addNode(String id) throws ExistException { // adding Node
+		
+		if(nodes.get(id)!=null) throw new ExistException("Node "+ id +" already exists");
+			
+		numOfNodes++;
+		
+		nodes.put(id, new Node(id));
+		
+		if(nd!=null) { nd.getChildren().add(nodes.get(id)); ndLab.getChildren().add(nodes.get(id).getLabel());}
+		
+	}
+	
+	public void addEdge(String id1,String id2,String l) throws ExistException { // adding Edge
+		
+		
+		
+		Edge e;
+		Pair<String,String> p;
+		
+		if(id1.compareTo(id2)<0) {
+			
+			p=new Pair<String,String>(id1,id2);
+			
+		}else {
+			
+			p=new Pair<String,String>(id2,id1);
+			
+		}
+		
+		if(edges.get(p)!=null) throw new ExistException("Edge "+ id1+"-"+id2+" already exist!");
+		
+		edges.put(p, e=new Edge(nodes.get(id1),nodes.get(id2),l));
+		
+		numOfEdges++;
+		nodes.get(id1).addEdge(id2, e); // adding edge to his local hashMap<id,Edge>
+		nodes.get(id2).addEdge(id1, e); // adding edge to his local hashMap<id,Edge>
+		
+		if(ed!=null) ed.getChildren().add(e); // adding edge to javafx Pane
+		
+	}
+	
+	public Node getNode(String id) { // getter for Node
+		
+		return nodes.get(id);
+		
+	}
+	
+	public Edge getEdge(String id1,String id2) { // getter for Edge
+		
+		if(id1.compareTo(id2)<0) {
+			
+			return edges.get(new Pair<String,String>(id1,id2));
+			
+		}else {
+			
+			return edges.get(new Pair<String,String>(id2,id1));
+			
+		}
+		
+	}
+	
+	public Edge removeEdge(String id1,String id2) throws NotExistException { // remove Edge returns removed Edge or null if it's empty
+		
+		
+		Pair<String,String> p;
+		
+		if(id1.compareTo(id2)<0) {
+			
+			p=new Pair<String,String>(id1,id2);
+			
+		}else {
+			
+			p=new Pair<String,String>(id2,id1);
+			
+		}
+		
+		if(edges.get(p)==null) throw new NotExistException("Edge "+ p.getLeft()+"-"+p.getRight()+" doesnt exist");
+		if(ed!=null) ed.getChildren().remove(edges.get(p));
+		
+		nodes.get(id1).removeEdge(id2); // removing from local map of edges
+		nodes.get(id2).removeEdge(id1); // removing from local map of edges
+		
+		numOfEdges--;
+		
+		return edges.remove(p);
+		
+	}
+	
+	public Node removeNode(String id) throws NotExistException { // remove Node returns deleted Node or null if it's empty
+		
+		if(nodes.get(id)==null) throw new NotExistException("Node "+id+" doesnt exist");
+		
+		numOfNodes--;
+		
+		if(nd!=null) nd.getChildren().remove(nodes.get(id));
+		
+		for(Edge e : nodes.get(id).getEdges().values()) { // iterating through map and deleting edges
+			
+			String id1,id2;
+			
+			id1=e.getN2().getIDDD();
+			id2=e.getN1().getIDDD();
+			
+			Pair<String,String> p;
+			
+			if(id1.compareTo(id2)<0) { // make pair for map
+				
+				p=new Pair<String,String>(id1,id2);
+				
+			}else {
+				
+				p=new Pair<String,String>(id2,id1);
+				
+			}
+			
+			if(id1.equals(id)) { // just remove edge from map that i am not iterating right now
+				
+				nodes.get(id2).removeEdge(id1);
+				
+			}
+			else {
+				
+				nodes.get(id1).removeEdge(id2);
+				
+			}
+
+			try { // remove edge from global and from scene
+				
+				if(edges.get(p)==null) throw new NotExistException("Edge "+ p.getLeft()+"-"+p.getRight()+" doesnt exist");
+				if(ed!=null) ed.getChildren().remove(edges.get(p));
+				edges.remove(p);
+				numOfEdges--;
+				
+			}catch(NotExistException ex) {
+				
+			}
+			
+		}
+		
+		nodes.get(id).getEdges().clear();
+		
+		
+		return nodes.remove(id);
+		
+	}
+
+	public void setPaneNodes(Pane nodes2) { // setting Pane for nodes
+		
+		nd=nodes2;
+		
+	}
+
+	public void setPaneEdges(Pane edges2) { // setting Pane for edges
+		
+		ed=edges2;
+		
+	}
+	
+	public void setPaneNodesLabels(Pane nodesLab) { // setting Pan for nodes labels
+		
+		ndLab=nodesLab;
+		
+	}
+	
+	public int getNumOfNodes() {
+		
+		return numOfNodes;
+		
+	}
+	
+	public int getNumOfEdges() {
+		
+		return numOfEdges;
+		
+	}
+	
+	public ArrayList<String> findShortestPath(String src,String dst){ // function for finding shortest path between two nodes
+		
+		if (src.equals(dst))
+			return null;
+		
+		Queue<String> queue = new LinkedList<String>();
+		Stack<String> pathStack = new Stack<String>();
+		HashMap<String, Boolean> visited = new HashMap<String, Boolean>();
+		HashMap<String,String> parentNode=new HashMap<String,String>();
+		boolean found=false;
+		
+		queue.add(src);
+		pathStack.add(src);
+		visited.put(src, true);
+
+		while(!queue.isEmpty()){
+			
+			String u = queue.poll();
+			
+			Map<String,Edge> map= getNode(u).getEdges();
+
+			for(String v : map.keySet()){
+				
+				if(!visited.containsKey(v)){
+					
+					queue.add(v);
+					visited.put(v, true);
+					pathStack.add(v);
+					parentNode.put(v, u);
+					
+					if(v.equals(dst)) {
+						
+						found=true; // path found
+						break;
+						
+					}
+					
+				}
+			}
+		}
+		
+		if(!found) return null; // if path is not found return null
+		
+		ArrayList<String> shortestPath = new ArrayList<>();
+	    String node = dst;
+	    
+	    while(node != null) {
+	    	
+	        shortestPath.add(node);
+	        node = parentNode.get(node);
+	        
+	    }
+	    
+	    Collections.reverse(shortestPath);
+		
+		return shortestPath;
+		
+	}
+
+	public double getGraphCenterX() { // finding graph width and finding the point in the middle of it relative to 0,0
+		
+		double min= Double.MAX_VALUE;
+		
+		for(Node n : nodes.values()) {
+			
+			if(n.getX()<min)
+				min=n.getX();
+			
+		}
+		
+		double max= Double.MIN_VALUE;
+		
+		for(Node n : nodes.values()) {
+			
+			if(n.getX()>max)
+				max=n.getX();
+			
+		}
+		
+		return (min+max)/2;
+		
+	}
+	
+	public double getGraphCenterY() { // finding graph height and finding the point in the middle of it relative to 0,0
+		
+		double min= Double.MAX_VALUE;
+		
+		for(Node n : nodes.values()) {
+			
+			if(n.getY()<min)
+				min=n.getY();
+			
+		}
+		
+		double max= Double.MIN_VALUE;
+		
+		for(Node n : nodes.values()) {
+			
+			if(n.getY()>max)
+				max=n.getY();
+			
+		}
+		
+		return (min+max)/2;
+		
+	}
+	
+	public static void main(String[] args) {
+		Graph g=new Graph();
+		try {
+		g.addNode("4");
+		g.addNode("5");
+		g.addNode("6");
+		g.addNode("7");
+		//g.addNode("6");
+		g.getNode("4").setCenterX(2);
+		g.getNode("5").setCenterX(6);
+		g.getNode("4").setCenterY(3);
+		g.getNode("5").setCenterY(3);
+		g.getNode("6").setCenterX(4);
+		g.getNode("7").setCenterX(5);
+		g.getNode("6").setCenterY(1);
+		g.getNode("7").setCenterY(5);
+		System.out.println(g.getGraphCenterX());
+		System.out.println(g.getGraphCenterY());
+		/*g.addEdge("4","5","4-5");
+		g.addEdge("4", "6", "4-6");
+		g.addEdge("5", "6", "5-6");
+		System.out.println(g.getNode("4"));
+		System.out.println(g.getNode("5"));
+		System.out.println(g.getEdge("4", "5"));
+		System.out.println(g.getEdge("5", "4"));
+		g.removeEdge("4","5");
+		System.out.println(g.getEdge("5", "4")); */
+		}catch(Exception e) {
+			System.out.println("Nema");
+		}
+	}
+
+	public void setPaneEdgesLabels(Pane edgesLab) {
+		
+		edLab=edgesLab;
+		
+	}
+
+
+
+}

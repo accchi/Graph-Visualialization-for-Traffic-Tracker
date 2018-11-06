@@ -1,0 +1,36 @@
+
+public class ExpCont extends Thread {
+
+	private boolean exp; // true-> expansion / false-> contraction
+	
+	private Graph graph;
+	
+	public ExpCont() {
+		
+		start();
+		
+	}
+	
+	public void run() {
+		
+		try {
+			
+			while(true) {
+				
+				synchronized(this) {
+					
+				wait();
+				
+				}
+				
+				if(exp) {
+					
+				}
+				
+			}
+			
+		}catch(Exception e) {
+			
+		}
+	}
+}

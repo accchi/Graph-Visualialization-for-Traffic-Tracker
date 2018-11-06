@@ -1,0 +1,70 @@
+
+import java.io.*;
+import java.util.regex.*;
+
+public class GML extends Format {
+
+	@Override
+	public Graph load(Graph g,File f) {
+		
+		File file=f; //new File(fname);
+		
+		try {
+			
+			BufferedReader buff=new BufferedReader(new FileReader(file));
+			buff.readLine();
+			buff.readLine();
+			
+			String line;
+			
+			while((line=buff.readLine())!=null) {
+				
+				Pattern pat1=Pattern.compile("(.*)");
+				Matcher mat1=pat1.matcher(line);
+				
+				if(mat1.find()) {
+					
+					if(mat1.group(1).contentEquals("node")) { // if matched node
+						
+						buff.readLine();
+						line=buff.readLine();
+						
+						Pattern pat2=Pattern.compile("^ *id (.*)");
+						Matcher mat2=pat2.matcher(line);
+						
+						if(mat2.find()) {
+							
+							g.addNode(mat2.group(1));
+							
+							line=buff.readLine();
+							Pattern pat3=Pattern.compile("^ *label (.*)");
+							Matcher mat3=pat3.matcher(line);
+							
+							if(mat3.find()) {
+								
+								g.getAllNodes().get(mat2.group(1)).setLabel(mat3.group(1));
+								
+							}else
+								
+								continue;
+						}
+						
+					}else { // if matched edge
+						
+						buff.readLine();
+						buff.readLine();
+						
+						Pattern pat1=Pattern.compile("^ *source^ *(.*)");
+						
+						
+					}
+				}
+			}
+		}catch(Exception e) {
+			
+		}
+		
+		return g;
+	}
+	
+}

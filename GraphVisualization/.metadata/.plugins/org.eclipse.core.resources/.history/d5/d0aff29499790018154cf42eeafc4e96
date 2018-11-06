@@ -1,0 +1,81 @@
+package visualize;
+import javafx.application.Platform;
+
+public class ForceAtlas extends Thread {
+
+	private Graph graph;
+	private boolean work;
+	
+	
+	public void run() {
+		try {
+			while (true) {
+				
+				synchronized (this) {
+					
+				//	while(!work) {
+						
+						wait();
+						
+					//}
+					
+				}
+				for (Node n : graph.getAllNodes().values()) {
+
+					double nx = n.getX();
+					double ny = n.getY();
+
+					double d = 0.0001 + Math.sqrt(nx * nx + ny * ny);
+					double gf = 0.0001 * 30 * d;
+
+					
+					Platform.runLater(new Runnable() {
+						
+						public void run() {
+							
+							n.setX(n.getX() - (gf * nx / d));
+							n.setY(n.getY() - (gf * ny / d));
+						}
+						
+					});
+					
+				}
+				
+				for(Node n1: graph.getAllNodes().values()) {
+					for(Node n2 : graph.getAllNodes().values()) {
+						if(n1!=n2) {
+							
+						}
+					}
+				}
+			}
+			
+		} catch (InterruptedException e) {
+
+		}
+		
+	}
+
+	public Graph getGraph() {
+		return graph;
+	}
+
+	public void setGraph(Graph graph) {
+		this.graph = graph;
+	}
+
+	public boolean isWork() {
+		return work;
+	}
+
+	public void setWork(boolean work) {
+		this.work = work;
+	}
+	
+	public synchronized void wakeup() {
+		
+		notify();
+		
+	}
+	
+}

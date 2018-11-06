@@ -1,0 +1,95 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.io.*;
+import java.util.regex.*;
+
+import javafx.scene.paint.Color;
+
+public class TXT extends Format {
+
+	@Override
+	public Graph load(Graph g, File f) {
+		
+		File file=f; //new File(fname);
+		
+		try {
+			
+			BufferedReader buff=new BufferedReader(new FileReader(file));
+			String line;
+			
+			while((line=buff.readLine())!=null) {
+				
+				//Pattern pat = Pattern.compile("([^\\s]+)([^\\s]+)([^\\s]+)([^\\s]+)([^\\s]+)([^\\s]+)([^\\s]+)([^\\s]+)([^\\s]+)([^\\s]+)"); // reads every line of file
+				//Matcher mat = pat.matcher(line);
+				
+				/*if(mat.find() && mat.group(1).contains("node")) {  // to be sure that this line is for node
+					String id=mat.group(2);
+					double x=Double.parseDouble(mat.group(3));
+					double y=Double.parseDouble(mat.group(4));
+					int degree=Integer.parseInt(mat.group(5));
+					int size=Integer.parseInt(mat.group(6));
+					String label=mat.group(7);
+					double red=Double.parseDouble(mat.group(8));
+					double green=Double.parseDouble(mat.group(9));
+					double blue=Double.parseDouble(mat.group(10)); */
+					
+					/*g.addNode(id);
+					g.getNode(id).setX(x);
+					g.getNode(id).setY(y);
+					g.getNode(id).setSize(size);
+					g.getNode(id).setLabel(label);
+					g.getNode(id).setColor(Color.color(red, green, blue));*/
+				String[] parse=line.split(" ");
+					
+				
+			}
+			
+		}catch(Exception e) {
+			
+		}
+		
+		return g;
+	}
+	
+	public void save(Graph g) {
+		
+		try {
+			File fout = new File("out.txt");
+			FileOutputStream fos = new FileOutputStream(fout);
+			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+			
+			for(Node n: g.getAllNodes().values()) {
+				
+				String lab;
+				
+				if(n.getLabel().getText().equals("")) {
+					
+					lab="null"; // if it doesnt have label
+					
+				}else {
+					lab=n.getLabel().getText();
+				}
+				
+				bw.write("node "+n.getIDDD()+" "+n.getX()+" "+n.getY()+" "+n.getDegree()+" "+n.getSize()+" "+lab+" "+n.getColor().getRed()+" "+n.getColor().getGreen()+" "+n.getColor().getBlue());
+				bw.newLine();
+			}
+			bw.close();
+		}catch(Exception e) {
+		}
+		
+		
+	}
+	
+	static public void main(String[] args) {
+
+	}
+
+}

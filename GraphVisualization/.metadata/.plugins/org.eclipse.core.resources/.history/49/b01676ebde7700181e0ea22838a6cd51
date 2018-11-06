@@ -1,0 +1,58 @@
+
+import java.io.*;
+import java.util.regex.*;
+
+public class CSV extends Format {
+
+	@Override
+	public Graph load(Graph g) {
+		
+		String fname="C:\\Users\\Aco\\Desktop\\CSV_tramvaji.csv";
+		File file=new File(fname);
+		
+		try {
+			
+			BufferedReader buff=new BufferedReader(new FileReader(file));
+			String line,id1="";
+			
+			while((line=buff.readLine())!=null) {
+				
+				Pattern p=Pattern.compile("(\\w+{0,1})");
+				Matcher match=p.matcher(line);
+				
+				if(match.find()) {
+					try {
+						id1=match.group(1);
+						g.addNode(id1);
+					}catch(ExistException e) {
+						
+					}
+				}
+				
+				while(match.find()) {
+					
+					try {
+						
+						String id2=match.group(1);
+						
+						if(g.getNode(id2)==null) { // because if it throw exception it wont create edge
+							g.addNode(id2);
+						}
+						
+						g.addEdge(id1,id2, id1+"-"+id2);
+						
+						
+					}catch(ExistException e) { //  it will throw exception every time it tries to add node or edge that already exist
+					
+					}
+				}
+			}
+			
+		}catch(Exception e) {
+			System.out.println(e);
+		}
+		
+		return g;
+	}
+
+}

@@ -1,0 +1,9 @@
+
+import java.io.*;
+
+import Graph;
+
+public abstract class Format {
+
+	public abstract Graph  load(Graph g,File f);
+}

@@ -1,0 +1,13 @@
+
+public class ExistException extends Exception { // exception if node or edge already exist
+
+	private String message;
+	
+	public AlreadyExist(String m) {
+		message=m;
+	}
+	
+	public String toString() {
+		return message;
+	}
+}

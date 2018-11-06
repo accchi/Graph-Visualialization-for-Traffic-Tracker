@@ -1,0 +1,13 @@
+
+public class NotExistException extends Exception {
+
+	private String message;
+	
+	public NotExistException(String m) {
+		message=m;
+	}
+	
+	public String toString() {
+		return message;
+	}
+}

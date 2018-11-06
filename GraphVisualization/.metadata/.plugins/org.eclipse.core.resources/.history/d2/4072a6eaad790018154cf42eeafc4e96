@@ -1,0 +1,15 @@
+package undoredo;
+
+import javax.swing.undo.AbstractUndoableEdit;
+
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import visualize.Node;
+
+public class EdgeReadd extends AbstractUndoableEdit {
+
+	
+	private Node n1,n2;
+	private Color color;
+	private Text label;
+}

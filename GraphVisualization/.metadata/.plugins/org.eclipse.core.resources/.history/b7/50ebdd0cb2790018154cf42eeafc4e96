@@ -1,0 +1,39 @@
+package undoredo;
+
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+
+import javafx.scene.paint.Color;
+import visualize.Graph;
+import visualize.Node;
+
+public class EdgeReadd extends AbstractUndoableEdit {
+
+	private Node n1,n2;
+	private Color color;
+	private String label;
+	private Graph graph;
+	
+	
+	public EdgeReadd(Graph g,Node n11,Node n22,Color col,String lab) {
+		
+		n1=n11; n2=n22; color=col; label=lab; graph=g;
+		
+	}
+	
+	@Override
+	public void redo() throws CannotRedoException {
+		
+		try {
+			graph.removeEdge(n1.getIDDD(), id2)
+		}
+	}
+	
+	@Override
+	public void undo() throws CannotUndoException {
+		
+		
+	}
+	
+}

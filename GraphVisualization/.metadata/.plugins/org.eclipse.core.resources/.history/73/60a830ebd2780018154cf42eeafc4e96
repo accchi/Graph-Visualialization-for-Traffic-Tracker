@@ -1,0 +1,127 @@
+
+import javafx.scene.shape.Circle;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javafx.scene.paint.Color;
+
+public class Node extends Circle implements java.io.Serializable  {
+	
+	private Map<String,Edge> edges;
+	private String id;
+	private int degree;
+	private Color color;
+	private double size;
+	static int ss=100;
+	
+	public Node(String idd) { // constructor for node
+		
+		id=idd;
+		size=10; // radius
+		color=Color.AQUAMARINE;
+		edges=new HashMap<String,Edge>(); // edges that this node has
+		
+		super.setRadius(size);                                 
+		super.setFill(color);
+		super.setCenterX(Visualization.startX+ Math.random()*(Visualization.endX-Visualization.startX)); // random generating X relative to size of pane
+		super.setCenterY(50+Math.random()*(Visualization.endY-50)); // random generating Y relative to size of pane
+		
+	}
+	
+	public void addEdge(String id1,Edge e) throws ExistException {
+		
+		if(edges.get(id1)!=null) throw new ExistException("Edge "+ id+"-"+id1+" already exist");
+		
+		degree++;
+		edges.put(id1, e);
+		
+	}
+	
+	public void removeEdge(String id1) throws NotExistException {
+		
+		if(edges.get(id1)==null) throw new NotExistException("Edge "+ id+"-"+id1+" doesnt exist");
+		
+		degree--;
+		edges.remove(id1);
+		
+	}
+	
+	public String toString() {
+		return id;
+	}
+	
+	
+	
+	// GETTERS AND SETTERS
+	public Map<String,Edge> getEdges(){
+		
+		return edges;
+	}
+	public String getIDDD() { // because there is getId already from super class
+		
+		return id;
+		
+	}	
+	public int getDegree() {
+	
+		return degree;
+		
+	}
+	public double getSize() {
+		
+		return size;
+		
+	}
+	public void setSize(double size) {
+		
+		this.size = size;
+		super.setRadius(size);
+		
+	}
+	public Color getColor() {
+		
+		return color;
+		
+	}
+	public void setColor(Color color) {
+		
+		this.color = color;
+		super.setFill(color);
+		
+	}
+	public double getX() {
+		
+		return super.getCenterX();
+		
+	}
+	public void setX(double x) {
+		
+		super.setCenterX(x);
+		
+		for(Edge e : edges.values()) { // updating all edges of this node
+			e.update();
+		}
+		
+	}
+	public double getY() {
+		
+		return super.getCenterY();
+		
+	}
+	public void setY(double y) {
+		
+		super.setCenterY(y);
+		
+		for(Edge e : edges.values()) { // updating positions all edges of node
+			e.update();
+		}
+		
+	}
+	
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

@@ -1,0 +1,26 @@
+import java.io.ObjectInputStream; 
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import javafx.collections.*;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class LSManager { // load/save graph manager
+	
+	public static void save(ObservableList<Double> points, String fileName) throws Exception  {
+	    try (ObjectOutputStream oos = new ObjectOutputStream(Files.newOutputStream(Paths.get(fileName)))) {
+	          oos.writeObject(new ArrayList<>(points));
+	    }
+	}
+	
+	public static ObservableList<Double> load(String fileName) throws Exception {
+	    try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(Paths.get(fileName)))) {
+	        List<Double> list = (List<Double>) ois.readObject();
+	        return FXCollections.observableList(list);
+	    }
+	}
+
+}

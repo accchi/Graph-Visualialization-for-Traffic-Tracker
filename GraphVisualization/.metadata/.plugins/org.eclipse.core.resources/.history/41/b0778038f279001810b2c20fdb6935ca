@@ -1,0 +1,1430 @@
+package visualize;
+
+import javafx.*;
+import javafx.stage.*;
+import javafx.scene.*;
+import javafx.scene.paint.Color;
+import javafx.application.*;
+import javafx.scene.shape.*;
+import javafx.scene.text.Font;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.control.TextField;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Optional;
+import javax.imageio.ImageIO;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.UndoManager;
+
+import formats.CSV;
+import formats.Format;
+import formats.GML;
+import formats.TXT;
+import javafx.scene.layout.Pane;
+import javafx.scene.control.Button;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.embed.swing.*;
+import java.io.File;
+import java.io.IOException;
+import javafx.scene.image.*;
+import javafx.scene.control.ColorPicker;
+import javafx.stage.FileChooser;
+import javafx.scene.control.ChoiceBox;
+//import java.util.Set;
+import javafx.collections.*;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.input.ScrollEvent;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.CheckMenuItem;
+//
+import undoredo.*;
+
+class SelectionModel {
+
+    HashSet<Node> selection = new HashSet<Node>();
+
+    public void add(Node node) {
+    	
+    	if(!contains(node)) {
+    		
+    		node.setStroke(Color.RED);
+    		node.setStrokeWidth(6);
+    		selection.add(node);
+    	}
+        
+    }
+
+    public void remove(Node node) {
+    	
+		node.setStrokeWidth(0);
+        selection.remove(node);
+        
+    }
+
+    public void clear() {
+
+        while( !selection.isEmpty()) {
+        	
+            remove(selection.iterator().next());
+            
+        }
+
+    }
+
+    public boolean contains(Node node) {
+    	
+        return selection.contains(node);
+        
+    }
+}
+
+
+public class Visualization extends Application {
+	
+	private Pane nodes,edges,root,nodesLab,edgesLab; //nodesLab for labels
+	private Graph graph;
+	private double orgSceneX, orgSceneY;
+	private static SelectionModel selected=new SelectionModel();
+	private Format format;
+	private Stage stage;
+	private GridPane gp;
+	private BorderPane bp;
+	private Scene scene;
+	private ExpCont exCnThread;
+	static double startX,endX,endY;  // width and height of scene where nodes will be placed
+	private ForceAtlas forceAtlas;
+	private UndoManager manager;
+	private Line line;
+	private boolean clicked;
+	private double sX,sY,eX,eY;
+	private String sID,eID;
+	
+	public void setGraph(Graph g) {
+		
+		graph=g;
+		nodes.getChildren().clear();
+		edges.getChildren().clear();
+		nodesLab.getChildren().clear();
+		edgesLab.getChildren().clear();
+		selected.clear(); // clear selection model
+		
+		g.setPaneNodes(nodes);
+		g.setPaneEdges(edges);
+		g.setPaneNodesLabels(nodesLab);
+		g.setPaneEdgesLabels(edgesLab);
+		
+		startX= gp.getWidth()+50; // calculating bounds of scene where nodes will be added
+		endY =bp.getHeight()-50;
+		endX= bp.getWidth()-50-startX;
+		forceAtlas.setGraph(graph);
+		exCnThread.setGraph(graph);
+		manager=new UndoManager();
+		
+	}
+	
+	public Visualization() {
+		
+		root=new Pane();
+		nodes=new Pane();
+		edges=new Pane();
+		nodesLab=new Pane();
+		edgesLab=new Pane();
+		
+		nodesLab.setMouseTransparent(true);
+		edgesLab.setMouseTransparent(true);
+		
+		line=new Line();
+		
+		root.getChildren().addAll(edges, nodes,nodesLab,edgesLab,line);
+		
+		exCnThread=new ExpCont(); // create thread for contraction and expansion and make it daemon thread and start it
+		exCnThread.setDaemon(true);
+		exCnThread.start();
+		
+		forceAtlas=new ForceAtlas();
+		forceAtlas.setDaemon(true);
+		forceAtlas.start();
+		
+		line.setStroke(Color.BLACK);
+		
+	}
+	
+	@Override
+	public void start(Stage s) throws Exception {
+		
+		stage=s;
+		
+		bp=new BorderPane();
+		gp=new GridPane();
+		gp.setStyle("-fx-background-color: lightblue;"); 
+		
+		gp.setPadding(new Insets(10, 10, 10, 10));
+		gp.setVgap(8); 
+	    gp.setHgap(5);
+	    
+	    
+	    addUndoRedoButton(); // adding buttons for undo redo
+	    
+	    addLabelButton(); // buttons for adding/removing labels
+	    
+	    forceAtlasButton();  // add force atlas button
+	    
+	    configZoom(); // set zoom in and zoom out on root
+	    
+	    expansionContractionButton(); // add buttons for expansion and contraction
+	    
+	    degreeNodeButton(); // change color of all nodes that have more than, equal or less than given degree number
+
+		shortestPathButton(); // add button for finding shortest path between selected nodes
+	    
+	    setMenuBar(); // setting menu bar
+	    
+		deleteNodeButton(); // adding delete node button to grid on left
+		
+		addNodeButton(); // adding add node button and textField to grid on left
+		
+		changeNodeEdgeColorButton(); // adding choice list and change color button to grid on left
+		
+		addEdgeButton(); //add button for adding edges
+		
+		removeEdgeButton(); // add button for removing edge
+		
+		changeNodeSizeButton(); // add button for changing node size
+		
+		bp.setCenter(root);
+		bp.setLeft(gp);
+		
+		//Creating a scene object 
+		scene = new Scene(bp, 800, 600);
+		scene.setFill(Color.ALICEBLUE);
+		
+		
+		//Setting title to the Stage 
+		stage.setTitle("Graph Visuelization");
+		
+		//Adding scene to the stage
+		stage.setScene(scene);
+		
+		//Displaying the contents of the stage
+		stage.setMaximized(true); // maximize screen
+		stage.show();
+		
+		stage.widthProperty().addListener((obs, oldVal, newVal) -> { // listeners if size of stage is changed/ recalculate bounds
+		     
+			startX= gp.getWidth()+50; // calculating bounds of scene where nodes will be added
+			endY =bp.getHeight()-50;
+			endX= bp.getWidth()-50-startX;
+			
+		});
+
+		stage.heightProperty().addListener((obs, oldVal, newVal) -> {  // listeners if size of stage is changed/ recalculate bounds
+		     
+			startX= gp.getWidth()+50; // calculating bounds of scene where nodes will be added
+			endY =bp.getHeight()-50;
+			endX= bp.getWidth()-50-startX;
+			
+		});
+		
+		
+		// Alert for choosing to close app
+		
+		Alert alert = new Alert(AlertType.CONFIRMATION);
+		alert.setTitle("Confirmation Dialog with Custom Actions");
+		alert.setHeaderText("Do you want to save changes to graph before closing?");
+		alert.setContentText("Choose your option.");
+		
+		ButtonType buttonTypeOne = new ButtonType("Yes");
+		ButtonType buttonTypeTwo = new ButtonType("No");
+		ButtonType buttonTypeThree = new ButtonType("Cancle");
+		
+		alert.getButtonTypes().setAll(buttonTypeOne, buttonTypeTwo, buttonTypeThree);
+		
+		alert.initOwner(stage);
+		
+		
+		stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+
+			public void handle(WindowEvent we) {
+				
+
+				Optional<ButtonType> result = alert.showAndWait();
+				
+				if (result.get() == buttonTypeOne){ // save before quit
+
+					FileChooser fileChooser = new FileChooser();
+		            fileChooser.setTitle("Save graph");
+		            
+		            File file = fileChooser.showSaveDialog(stage);
+		            
+		            if (file != null) {
+		                	
+		                   TXT txt=new TXT();
+		                   txt.save(graph,file);
+		                   
+		            }
+		            
+		            stage.close();
+		            
+				} else if (result.get() == buttonTypeTwo) {
+					
+					stage.close();
+					
+				} else if (result.get() == buttonTypeThree) {
+					
+					we.consume();
+					alert.close();
+					
+				}
+			}
+
+		});
+		
+		
+		/*root.setOnMouseDragged((t)->{
+			
+			
+			for(Node n:graph.getAllNodes().values()) {
+				
+				if(t.getX()>n.getX() && t.getY()>n.getY()) {
+					
+					if(!selected.contains(n)) {
+						
+						selected.add(n);
+					}
+					
+				}else {
+					if(selected.contains(n))
+						selected.remove(n);
+				}
+				
+			}
+			
+			
+			t.consume();
+		}); */
+		
+	}
+	
+	
+	private void addUndoRedoButton() {
+		
+		Button undo = new Button("Undo");
+		undo.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		
+		Button redo = new Button("Redo");
+		redo.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+
+		undo.setOnMouseClicked((t) -> {
+			
+			try {
+				
+				manager.undo();
+				
+			}catch(CannotUndoException e) {
+				
+			}
+
+		});
+		
+		redo.setOnMouseClicked((t)->{
+			
+			try {
+				
+				manager.redo();
+				
+			}catch(CannotRedoException e) {
+				
+			}
+			
+		});
+		
+		gp.add(undo, 0, 20);
+		gp.add(redo, 1, 20);
+		
+		
+	}
+	
+	private void addLabelButton() {
+		
+		ToggleButton nodeLabels = new ToggleButton("Node label");
+		ToggleButton edgeLabels= new ToggleButton("Edge label");
+		
+		
+		nodeLabels.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		edgeLabels.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		
+		nodeLabels.setOnAction((t)->{
+			
+			if(nodeLabels.isSelected()) {
+				
+				for(Node n: graph.getAllNodes().values()) {
+					
+					n.getLabel().setVisible(true);
+					
+				}
+				
+				
+			} else {
+				
+				for(Node n: graph.getAllNodes().values()) {
+					
+					n.getLabel().setVisible(false);
+					
+				}
+				
+			}
+			
+		});
+		
+		edgeLabels.setOnAction((t)->{
+			
+			if(edgeLabels.isSelected()) {
+				
+				for(Edge e: graph.getAllEdges().values()) {
+					
+					e.getLabel().setVisible(true);
+					
+				}
+				
+			} else {
+				
+				for(Edge e: graph.getAllEdges().values()) {
+					
+					e.getLabel().setVisible(false);
+					
+				}
+				
+			}
+			
+		});
+		
+		gp.add(nodeLabels, 1, 6);
+		gp.add(edgeLabels, 0, 12);
+		
+	}
+
+	private void forceAtlasButton() {
+		
+		Button faButton = new Button("Start Force Atlas");
+		faButton.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		
+		Button fasButton = new Button("Stop Force Atlas");
+		fasButton.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+
+		faButton.setOnMouseClicked((t) -> {
+			
+				forceAtlas.wakeup();
+
+		});
+		
+		fasButton.setOnMouseClicked((t)->{
+			
+			forceAtlas.setWork(false);
+			
+		});
+		
+		gp.add(faButton, 0, 38);
+		gp.add(fasButton, 1, 38);
+		
+	}
+	
+	private void configZoom() { // set zoom in and zoom out on scroll on root
+		
+		final double SCALE_DELTA = 1.1;
+
+		root.setOnScroll(new EventHandler<ScrollEvent>() {
+		  @Override public void handle(ScrollEvent event) {
+		    event.consume();
+
+		    if (event.getDeltaY() == 0) {
+		      return;
+		    }
+
+		    double scaleFactor =
+		      (event.getDeltaY() > 0)
+		        ? SCALE_DELTA
+		        : 1/SCALE_DELTA;
+
+		    root.setScaleX(root.getScaleX() * scaleFactor);
+		    root.setScaleY(root.getScaleY() * scaleFactor);
+		  }
+		});
+		
+	}
+	
+	private void degreeNodeButton() {
+		
+		
+		Button nodeDegree=new Button("Format by degree");
+		ChoiceBox<String> cb = new ChoiceBox<String>(FXCollections.observableArrayList("Less than", "Equal to", "Greater than"));
+		TextField tf=new TextField("");
+		ColorPicker degreeColorPicker = new ColorPicker(Color.BLACK); // creating color picker for edge
+		
+		cb.setValue("Less than"); // set default value for choicebox
+		degreeColorPicker.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		nodeDegree.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		cb.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		tf.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		
+		nodeDegree.setOnMouseClicked((t)->{
+			
+			//int dgr=Integer.parseInt(tf.getText());
+			//String operation=cb.getValue();
+			//Color color=degreeColorPicker.getValue();
+			
+			int min=Integer.MAX_VALUE;
+			int max=Integer.MIN_VALUE;
+			
+			for(Node n: graph.getAllNodes().values()) {
+				
+				if(n.getDegree()>max) {
+					max=n.getDegree();
+				}
+				if(n.getDegree()<min) {
+					min=n.getDegree();
+				}
+				
+			}
+			
+			for(Node n: graph.getAllNodes().values()) {
+				
+				n.setSize((max-min)*n.getDegree());
+				
+				/*switch(operation) { // in case what is in choice box we do following operations
+				case "Less than":{
+					if(n.getDegree()<dgr) { 
+						
+						n.setColor(color);
+						n.setSize(n.getSize()+n.getDegree());
+					
+					}
+					break;
+				}
+				case "Equal to":{
+					if(n.getDegree()==dgr) {
+						
+						n.setColor(color);
+						n.setSize(n.getSize()+n.getDegree());
+					}
+					break;
+				}
+				case "Greater than":{
+					if(n.getDegree()>dgr) {
+						
+						n.setColor(color);
+						n.setSize(n.getSize()+n.getDegree());
+						
+					}
+					break;
+				}
+				}*/
+			}
+			
+		});
+		
+		gp.add(cb, 0, 28);
+		gp.add(tf, 1, 28);
+		gp.add(nodeDegree, 0, 29);
+		gp.add(degreeColorPicker, 1, 29);
+		
+}
+
+	private void setMenuBar() { // setting menu bar and all menu events  THIS WILL BE CHANGED LATER
+		
+	    MenuBar menuBar = new MenuBar();
+	    
+        Menu menuFile = new Menu("File");
+        Menu menuEdit = new Menu("Edit");
+        Menu menuView = new Menu("View");
+        
+        
+        MenuItem menuOpen=new MenuItem("Open File");
+        
+        menuOpen.setOnAction((t)->{
+        	
+        	FileChooser fileChooser = new FileChooser();
+        	fileChooser.setTitle("Open Resource File");
+        	//fileChooser.showOpenDialog(stage);
+        	FileChooser.ExtensionFilter csvFilter = new FileChooser.ExtensionFilter("TEXT files (*.csv)", "*.csv");
+        	FileChooser.ExtensionFilter gmlFilter = new FileChooser.ExtensionFilter("GIS files (*.gml)", "*.gml");
+        	FileChooser.ExtensionFilter txtFilter = new FileChooser.ExtensionFilter("TEXT files (*.txt)", "*.txt");
+        	
+            fileChooser.getExtensionFilters().addAll(csvFilter,gmlFilter,txtFilter);
+            File file = fileChooser.showOpenDialog(stage);
+            
+            if (file != null) {
+                
+            	String fileName = file.getName();
+            	String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1, file.getName().length());
+            	
+            	if(fileExtension.equals("csv")) {
+            		
+            		format=new CSV();
+            		
+            	}else {
+            		
+            		if(fileExtension.equals("txt")) {
+            			
+            			format=new TXT();
+            			
+            		}else {
+            			
+            			format=new GML();
+            		}
+            	}
+    			
+            	graph=new Graph();
+    			setGraph(graph);
+    			format.load(graph,file);
+    			
+    			for(Node n : graph.getAllNodes().values()) {
+    				
+    				setDraggable(n);
+    				
+    			}
+    			
+            }else {
+            	
+            	Alert alert = new Alert(AlertType.WARNING);
+    			alert.setTitle("Warning Dialog");
+    			alert.setHeaderText("Look, a Warning Dialog");
+    			alert.setContentText("Wrong file format!");
+    			alert.initOwner(stage);
+
+    			alert.showAndWait();
+            	
+            }
+        	
+        });
+        Menu menuExport=new Menu("Export as");
+        
+        MenuItem menuPNG=new MenuItem("PNG"); // Export as photo on click
+        
+        menuPNG.setOnAction((t)->{
+        	
+        	exportAsPNG();
+        	
+        	Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setTitle("Information Dialog");
+			alert.setHeaderText("Look, a Information Dialog");
+			alert.setContentText("Succesfully exported as png!");
+			alert.initOwner(stage);
+
+			alert.showAndWait();
+        	
+        });
+        
+        
+        MenuItem menuImport=new MenuItem("Save");
+      
+        
+        menuImport.setOnAction((t)->{
+			
+			FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Save graph");
+            
+            File file = fileChooser.showSaveDialog(stage);
+            
+            if (file != null) {
+                	
+                   TXT txt=new TXT();
+                   txt.save(graph,file);
+                   
+            }
+        	
+        	
+        });
+        
+        MenuItem exit=new MenuItem("Exit");
+        
+        exit.setOnAction((t)->{
+        	
+        	Alert alert = new Alert(AlertType.CONFIRMATION);
+    		alert.setTitle("Confirmation Dialog with Custom Actions");
+    		alert.setHeaderText("Do you want to save changes to graph before closing?");
+    		alert.setContentText("Choose your option.");
+    		
+    		ButtonType buttonTypeOne = new ButtonType("Yes");
+    		ButtonType buttonTypeTwo = new ButtonType("No");
+    		ButtonType buttonTypeThree = new ButtonType("Cancle");
+    		
+    		alert.getButtonTypes().setAll(buttonTypeOne, buttonTypeTwo, buttonTypeThree);
+    		
+    		alert.initOwner(stage);
+    		
+			Optional<ButtonType> result = alert.showAndWait();
+			
+			if (result.get() == buttonTypeOne){ // save before quit
+
+				FileChooser fileChooser = new FileChooser();
+	            fileChooser.setTitle("Save graph");
+	            
+	            File file = fileChooser.showSaveDialog(stage);
+	            
+	            if (file != null) {
+	                	
+	                   TXT txt=new TXT();
+	                   txt.save(graph,file);
+	                   
+	            }
+	            
+	            stage.close();
+	            
+			} else if (result.get() == buttonTypeTwo) {
+				
+				stage.close();
+				
+			} else if (result.get() == buttonTypeThree) {
+				
+				t.consume();
+				alert.close();
+				
+			}
+        	
+        });
+        
+        MenuItem undo=new MenuItem("Undo");
+        
+        undo.setOnAction((t)->{
+        	
+        	try {
+        		
+        		manager.undo();
+        		
+        	}catch(CannotUndoException e) {
+        		
+        	}
+        	
+        });
+        
+        MenuItem redo=new MenuItem("Redo");
+        
+        redo.setOnAction((t)->{
+        	
+        	try {
+        		
+        		manager.redo();
+        		
+        	}catch(CannotRedoException e) {
+        		
+        	}
+        	
+        });
+        
+        
+        CheckMenuItem fullscreen=new CheckMenuItem("Fullscreen");
+        fullscreen.setSelected(true);
+        
+        fullscreen.setOnAction((t)->{
+        	
+        	if(fullscreen.isSelected()) {
+        		stage.setMaximized(true);
+        	}else {
+        		stage.setMaximized(false);
+        	}
+        	
+        });
+        
+        menuEdit.getItems().addAll(undo,redo);
+        menuExport.getItems().addAll(menuPNG);
+        menuView.getItems().addAll(fullscreen);
+        menuFile.getItems().addAll(menuOpen,menuExport,menuImport,exit);
+        menuBar.getMenus().addAll(menuFile, menuEdit, menuView);
+        
+        bp.setTop(menuBar); 
+        
+	}
+
+	public void setDraggable(Node n) { // adding events to node to make it draggable ; needs to be public because we use it in NodeRedelete
+		
+		n.setCursor(Cursor.HAND);
+		
+		n.setOnMousePressed((t) -> {
+			
+			orgSceneX = t.getSceneX();
+			orgSceneY = t.getSceneY();
+			
+			Node c = (Node) (t.getSource());
+			c.setStroke(Color.RED);
+			c.setStrokeWidth(6);
+			
+			c.toFront();  
+			
+			
+	    });
+		
+		
+		
+		n.setOnMouseEntered((t)->{
+			
+			if(!t.isControlDown()) { // if not ctrl pressed then
+				
+				Node c = (Node) (t.getSource());
+				
+				if(!selected.contains(c)) { // if not in selected nodes put stroke around
+					
+					c.setStroke(Color.RED);
+					c.setStrokeWidth(3);
+					
+				}
+				//c.setStrokeLineCap(StrokeLineCap.ROUND);
+			}
+		});
+		
+		
+		n.setOnMouseClicked((t)->{
+			
+			if(!clicked) {
+			 line.setStartX(n.getX());
+			 sX=n.getX();
+			 line.setStartY(n.getY());
+			 sY=n.getY();
+			 sID=n.getIDDD();
+			 clicked=true;
+			}else {
+				line.setEndX(n.getX());
+				line.setEndY(n.getY());
+				try {
+				graph.addEdge(sID, n.getIDDD(), sID+"-"+n.getIDDD());
+				}catch(Exception e) {
+					
+				}
+				line=null;
+				clicked=false;
+			}
+		
+			
+			/*if(t.isControlDown()) { // if ctrl pressed
+				
+				if(t.isShiftDown()) { // if shift pressed
+					
+					if(graph.getAllNodes().size()!=selected.selection.size()) { // then if size!=size of selected add all nodes that are missing in selected
+						
+						for(Node node : graph.getAllNodes().values()) {
+							
+							if(!selected.selection.contains(node)) selected.add(node);
+							
+						}
+					}
+					
+					else { 
+						
+						selected.clear();
+						
+					}
+					
+				}else {
+					
+					if(!selected.selection.contains(t.getSource()))
+						selected.add((Node)t.getSource());
+					else
+						selected.remove((Node)t.getSource());
+				}
+			}*/
+		});
+		
+	
+		
+		n.setOnMouseExited((t)->{
+			
+			if(!t.isControlDown()) {
+				
+				Node c = (Node) (t.getSource());
+				
+				if(!selected.contains(c)) {
+					
+					c.setStrokeWidth(0);
+					
+				}
+			}
+			
+		});
+		
+		n.setOnMouseReleased((t)->{
+			
+			if(!t.isControlDown()) {
+				
+				Node c = (Node) (t.getSource());
+				
+				if(!selected.contains(c)) {
+					
+					c.setStrokeWidth(0);
+					
+				}
+			}
+			
+		});
+		
+	    n.setOnMouseDragged((t) -> {
+	    	
+	    	
+	    	
+	    	double offsetX = t.getSceneX() - orgSceneX;
+	    	double offsetY = t.getSceneY() - orgSceneY;
+	      
+	    	/*Node c = (Node) (t.getSource());
+	    	
+	    	if(!t.isShiftDown()) {
+	    		c.setX(c.getCenterX() + offsetX);
+	    		c.setY(c.getCenterY() + offsetY);
+	    	}else {
+	    		
+	    		for(Node node: selected.selection) {
+	    			
+	    			node.setX(node.getCenterX() + offsetX);
+		    		node.setY(node.getCenterY() + offsetY);
+		    		
+	    		}
+	    	}*/
+
+	    	orgSceneX = t.getSceneX();
+	    	orgSceneY = t.getSceneY();
+	    	
+	    });
+		
+	}
+	
+	private void deleteNodeButton() {
+
+		Button deleteNode = new Button("Delete selected node");
+		deleteNode.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+
+		deleteNode.setOnMouseClicked((t) -> {
+
+			if (selected.selection.size() != 0) { // delete all selected buttons
+
+				HashMap<String,Color> colors=new HashMap<String,Color>();
+				HashMap<String,String> labels=new HashMap<String,String>();
+				
+				for (Node n : selected.selection) {
+
+					try {
+						
+						String id=n.getIDDD();
+						Color color=n.getColor();
+						String label=n.getLabel().getText();
+						int degree=n.getDegree();
+						double size=n.getSize();
+						double x=n.getX();
+						double y=n.getY();
+						
+						for(String idd : n.getEdges().keySet()) {
+							
+							colors.put(idd, graph.getEdge(id, idd).getColor());
+							labels.put(idd, graph.getEdge(id, idd).getLabel().getText());
+							
+							
+						}
+						
+						manager.addEdit(new NodeRedelete(graph,id,x,y,degree,color,size,label,colors,labels,this)); // adding edit for undo manager
+
+						graph.removeNode(n.getIDDD());
+
+					} catch (NotExistException e) {
+
+					}
+
+				}
+
+				selected.selection.clear();
+
+			} else { // alert if none selected
+
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText("Please select nodes!");
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+
+			}
+
+		});
+
+		gp.add(deleteNode, 0, 6);
+
+	}
+	
+	private void expansionContractionButton() { // add buttons for expansion and contraction
+		
+		ChoiceBox<String> cb = new ChoiceBox<String>(FXCollections.observableArrayList("Expansion", "Contraction"));
+		Button run=new Button("Run");
+		Label scaleLabel=new Label("Pick scale factor:");
+		
+		//ChoiceBox<double> scale=new ChoiceBox<double>(FXCollections.observableArrayList(0.5,0.6 ,0.7 ,0.8 ,0.9 ,1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0)); // add scale factors
+		
+		 Spinner<Double> spinner = new Spinner<Double>();
+		 
+	     SpinnerValueFactory<Double> valueFactory = new SpinnerValueFactory.DoubleSpinnerValueFactory(1.1, 1.9, 1.1,0.1); // min, max, initial, step
+	     spinner.setValueFactory(valueFactory);
+	     
+		cb.setValue("Expansion"); // set default value
+		run.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		cb.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		scaleLabel.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		scaleLabel.setAlignment(Pos.CENTER);
+
+		
+		run.setOnMouseClicked((t)->{
+
+			exCnThread.setGraph(graph); // set graph for exp or cont
+			
+			if(cb.getValue().equals("Expansion")) { // choose what to do
+				
+				exCnThread.setExp(true);
+				exCnThread.setScaleFactor(spinner.getValue());
+				exCnThread.wakeup(); // notify thread to do what it needs
+				
+			}else {
+				
+				exCnThread.setExp(false);
+				exCnThread.setScaleFactor(spinner.getValue());
+				exCnThread.wakeup(); // notify thread to do what it needs
+				
+			}
+			
+			/*double x=graph.getGraphCenterX();
+			double y=graph.getGraphCenterY();
+			
+			for(Node n : graph.getAllNodes().values()) {
+				
+				n.setX(n.getX()-((x-n.getX())*1.1));
+				n.setY(n.getY()-((y-n.getY())*1.1));
+				
+			}*/
+			
+		});
+		
+		
+		
+		 gp.add(cb, 0, 34);
+		 gp.add(run, 1, 34);
+		 gp.add(scaleLabel, 0, 35);
+		 gp.add(spinner, 1, 35);
+		
+	}
+	
+	private void shortestPathButton() {
+		
+		Button shortest=new Button("Find shortest path");
+		shortest.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+		
+		ColorPicker pathColorPicker = new ColorPicker(Color.BLACK); // creating color picker for edge
+		pathColorPicker.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		
+		shortest.setOnMouseClicked((t)->{
+			
+			if(selected.selection.size()==2) {
+				
+				Object[] select=selected.selection.toArray();
+				
+				Node n1=(Node)select[0];
+				Node n2=(Node)select[1];
+				
+				ArrayList<String> path=graph.findShortestPath(n1.getIDDD(), n2.getIDDD());
+				
+				if (path != null) {
+
+					selected.clear();
+
+					for (String s : path) {
+
+						selected.add(graph.getNode(s));
+
+					}
+					
+					Color color=pathColorPicker.getValue();
+					
+					for (Node node : selected.selection) {
+
+						for (Edge edge : node.getEdges().values()) {
+
+							if (selected.contains(edge.getN1()) && selected.contains(edge.getN2())) {
+
+								edge.setColor(color);
+								break;
+
+							}
+						}
+
+						node.setColor(color);
+
+					}
+
+					selected.clear();
+					
+				}else {
+					
+					Alert alert = new Alert(AlertType.WARNING);
+					alert.setTitle("Warning Dialog");
+					alert.setHeaderText("Look, a Warning Dialog");
+					alert.setContentText("Path not found!");
+					alert.initOwner(stage);
+
+					alert.showAndWait();
+					
+				}
+				
+			} else {
+				
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText("Please select only source and destination node!");
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+			}
+			
+		});
+		
+		gp.add(shortest, 0, 25);
+		gp.add(pathColorPicker, 1, 25);
+		
+	}
+	
+	private void addNodeButton() { // add buttons for adding node
+		
+		Button addNode=new Button("Add node");
+		TextField an=new TextField();
+		addNode.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		
+		
+		
+		addNode.setOnMouseClicked((t)->{ 
+			
+			try { // get id from textfield and create new node
+				
+			String id=an.getText();
+			graph.addNode(id);
+			setDraggable(graph.getNode(id));
+			
+			Node n=graph.getNode(id);
+			
+			manager.addEdit(new NodeReadd(graph,id,n.getLabel().getText(), n.getSize(), n.getColor(), n.getDegree(),n.getCenterX(),n.getCenterY())); // for undo manager
+			
+			}catch(ExistException e) { // alert if adding node that already exist 
+				
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText(e.toString());
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+				
+			}
+			
+		});
+		
+	
+	    gp.add(addNode, 0, 3);
+	    gp.add(an, 1, 3);
+		
+	}
+	
+	private void changeNodeSizeButton() { // buttons for changing node size
+		
+		Button changeNodeSize=new Button("Change node size");
+		TextField ns=new TextField();
+		changeNodeSize.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		
+		changeNodeSize.setOnMouseClicked((t)->{ // getting values from sliders and setting new color
+			
+			double size=Double.parseDouble(ns.getText());
+			
+			if(selected.selection.size()!=0) {
+				
+				HashMap<Node,Double> oldSize=new HashMap<Node,Double>(); // store old Sizes for nodes
+				HashSet<Node> nd= new HashSet<Node>(); // store nodes that need change
+				
+				for(Node node : selected.selection) {
+					
+					nd.add(node);
+					oldSize.put(node, node.getSize());
+					node.setSize(size);
+					
+				}
+				
+				manager.addEdit(new NodeResize(oldSize,size,nd)); // put it on stack of UndoManager
+				
+			}else { // alert if none selected
+				
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText("Please select nodes!");
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+				
+			}
+			
+		});
+		
+		gp.add(changeNodeSize, 0, 5);
+	    gp.add(ns, 1, 5);
+		
+	}
+	
+	private void changeNodeEdgeColorButton() { // button for changing node color
+		
+		Button changeNodeColor=new Button("Change node color");
+		Button changeEdgeColor=new Button("Change edge color");
+		
+		changeNodeColor.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		changeEdgeColor.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		
+		
+		ColorPicker nodeColorPicker = new ColorPicker(Color.BLACK); // creating color picker for node
+		ColorPicker edgeColorPicker = new ColorPicker(Color.BLACK); // creating color picker for edge
+		nodeColorPicker.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		edgeColorPicker.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button on grid pane
+		
+		changeNodeColor.setOnMouseClicked((t)->{ // getting values from sliders and setting new color
+			
+			Color color= nodeColorPicker.getValue();
+			
+			if(selected.selection.size()!=0) {
+				
+				HashMap<Node,Color> oldColor=new HashMap<Node,Color>(); // store old Colors for nodes
+				HashSet<Node> nd= new HashSet<Node>(); // store nodes that need change
+				
+				for(Node node : selected.selection) {
+					
+					
+					nd.add(node); // save nodes that need to be changed
+					oldColor.put(node, node.getColor()); // save old color
+					node.setColor(color);
+					
+				}
+				
+				manager.addEdit(new NodeRecolor(oldColor,color,nd)); // put it on stack of UndoManager
+				
+			}else { // alert if none selected
+				
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText("Please select nodes!");
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+				
+			}
+			
+		});
+		
+		changeEdgeColor.setOnMouseClicked((t)->{ // getting values from sliders and setting new color
+			
+			Color color=edgeColorPicker.getValue();
+			
+			if(selected.selection.size()!=0) {
+				
+				HashMap<Edge,Color> oldColor=new HashMap<Edge,Color>(); // store old Colors for edges
+				HashSet<Edge> ed= new HashSet<Edge>(); // store edges that need change
+				
+				for(Node node : selected.selection) {
+					
+					for(Edge edge : node.getEdges().values()) {
+						
+						if(selected.contains(edge.getN1()) && selected.contains(edge.getN2())){
+							
+							
+							if(!ed.contains(edge)) { // because i maybe iterate 2 times throught same edge
+								
+								ed.add(edge); // save edges that need to be changed
+								oldColor.put(edge, edge.getColor()); // save old color
+								
+							}
+							edge.setColor(color);
+							
+						}
+					}
+					
+				}
+				
+				manager.addEdit(new EdgeRecolor(oldColor,color,ed)); // put it on stack of UndoManager
+				
+			}else { // alert if none selected
+				
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText("Please select nodes!");
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+				
+			}
+			
+		});
+		
+	
+	    gp.add(changeNodeColor, 0, 4);
+        gp.add(nodeColorPicker, 1, 4);
+        
+        
+	    gp.add(changeEdgeColor, 0, 11);
+	    gp.add(edgeColorPicker, 1, 11);
+	    
+		
+	}
+	
+	private void addEdgeButton() {
+		
+		Button addEdge=new Button("Add Edge");
+		addEdge.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		
+		
+		
+		addEdge.setOnMouseClicked((t)->{ 
+			
+			try { 
+				
+				if(selected.selection.size()==2) { // if 2 selected add Edge between them
+					
+					String id1,id2;
+					
+					Object[] arr=selected.selection.toArray();
+					graph.addEdge(id1=((Node)arr[0]).getIDDD(), id2=((Node)arr[1]).getIDDD(), id1+"-"+id2);
+					
+					
+					manager.addEdit(new EdgeReadd(graph,id1,id2,graph.getEdge(id1, id2).getLabel().getText())); // for undo and redo
+					
+					
+				}else { // alert if more than 2 selected
+					
+					Alert alert = new Alert(AlertType.WARNING);
+					alert.setTitle("Warning Dialog");
+					alert.setHeaderText("Look, a Warning Dialog");
+					alert.setContentText("Please select 2 nodes that will be linked!");
+					alert.initOwner(stage);
+
+					alert.showAndWait();
+					
+				}
+			
+			}catch(ExistException e) { // alert if adding node that already exist 
+				
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText(e.toString());
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+				
+			}
+			
+		});
+		
+	
+	    gp.add(addEdge, 0, 10);
+		
+		
+	}
+		
+	private void removeEdgeButton() {
+		
+		Button removeEdge=new Button("Remove Edge");
+		removeEdge.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE); // stretching button  on grid pane
+		
+		
+		removeEdge.setOnMouseClicked((t)->{ 
+			
+			try { 
+				
+				if(selected.selection.size()==2) { // if 2 selected add Edge between them
+					
+					String id1,id2;
+					Object[] arr=selected.selection.toArray();
+					
+					id1=((Node)arr[0]).getIDDD();
+					id2=((Node)arr[1]).getIDDD();
+					Color color=graph.getEdge(id1, id2).getColor();
+					String label=graph.getEdge(id1, id2).getLabel().getText();
+					
+					graph.removeEdge(id1=((Node)arr[0]).getIDDD(), id2=((Node)arr[1]).getIDDD());
+					
+					manager.addEdit(new EdgeRedelete(graph,id1,id2,color,label)); // save context for undo manager
+					
+				}else { // alert if more than 2 selected
+					
+					Alert alert = new Alert(AlertType.WARNING);
+					alert.setTitle("Warning Dialog");
+					alert.setHeaderText("Look, a Warning Dialog");
+					alert.setContentText("Please select 2 nodes!");
+					alert.initOwner(stage);
+
+					alert.showAndWait();
+					
+				}
+			
+			}catch(NotExistException e) { // alert if adding node that already exist 
+				
+				Alert alert = new Alert(AlertType.WARNING);
+				alert.setTitle("Warning Dialog");
+				alert.setHeaderText("Look, a Warning Dialog");
+				alert.setContentText(e.toString());
+				alert.initOwner(stage);
+
+				alert.showAndWait();
+				
+			}
+			
+		});
+		
+	
+	    gp.add(removeEdge, 1, 10);
+	
+		
+	}
+	
+	private void exportAsPNG() { // function for exporting scene as photo
+
+			WritableImage wi = new WritableImage((int) root.getWidth(), (int) root.getHeight());
+			WritableImage snapshot = scene.snapshot(wi);
+			
+			FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Save Image");
+            File file = fileChooser.showSaveDialog(stage);
+            
+            if (file != null) {
+            	
+                try {
+                	
+                    ImageIO.write(SwingFXUtils.fromFXImage(snapshot,null), "png", file);
+                    
+                } catch (IOException ex) {
+                	
+                }
+            }
+            
+	}
+	
+	public static void main(String args[]) {
+		
+		Application.launch(args);
+
+	}
+	
+	
+}
+
+

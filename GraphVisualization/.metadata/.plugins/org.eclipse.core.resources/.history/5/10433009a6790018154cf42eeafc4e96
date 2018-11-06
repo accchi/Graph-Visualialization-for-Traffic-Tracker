@@ -1,0 +1,53 @@
+package undoredo;
+
+
+import visualize.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+
+
+public class NodeReadd extends AbstractUndoableEdit {
+	
+	private Graph g;
+	private String id;
+	private int degree;
+	private Color color;
+	private double size;
+	private Text label;
+	
+	NodeReadd(Graph gg,String idd,Text lab,double siz,Color col,int dgr){
+		
+		id=idd; label=lab; size=siz; color=col; degree=dgr; g=gg;
+		
+	}
+	
+	@Override
+	public void redo() throws CannotRedoException {
+		
+		try {
+			
+			g.removeNode(id);
+			
+		}catch(NotExistException e) {
+			
+		}
+		
+	}
+	
+	@Override
+	public void undo() throws CannotUndoException {
+		// TODO Auto-generated method stub
+		super.undo();
+	}
+	
+
+}

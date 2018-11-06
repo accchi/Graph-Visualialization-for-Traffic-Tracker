@@ -1,0 +1,16 @@
+package undoredo;
+
+import javax.swing.undo.AbstractUndoableEdit;
+
+import javafx.scene.paint.Color;
+import visualize.Node;
+
+public class EdgeRedelete extends AbstractUndoableEdit {
+
+	
+	private Node n1,n2;
+	private Color color;
+	private String label;
+	
+	
+}

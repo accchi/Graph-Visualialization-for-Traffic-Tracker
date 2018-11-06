@@ -1,0 +1,27 @@
+
+import java.io.*;
+import java.util.regex.*;
+
+public class GML extends Format {
+
+	@Override
+	public Graph load(Graph g,File f) {
+		
+		File file=f; //new File(fname);
+		
+		try {
+			
+			BufferedReader buff=new BufferedReader(new FileReader(file));
+			String line,id1="";
+			
+			while((line=buff.readLine())!=null) {
+				
+			}
+		}catch(Exception e) {
+			
+		}
+		
+		return g;
+	}
+	
+}
